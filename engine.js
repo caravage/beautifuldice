@@ -8,23 +8,28 @@ import * as CANNON from 'cannon-es';
 const container = document.getElementById('canvas-container');
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a1a);
+scene.background = new THREE.Color(0x1c1c1e);
 
-const camera = new THREE.PerspectiveCamera(
-    45,
-    container.clientWidth / container.clientHeight,
-    0.1,
-    1000
-);
+// Use a small default; ResizeObserver will fix it on first frame
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
 camera.position.set(0, 30, 0);
 camera.lookAt(0, 0, 0);
 camera.up.set(0, 0, -1);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 container.appendChild(renderer.domElement);
+
+function resizeRenderer() {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    if (w === 0 || h === 0) return;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+}
+resizeRenderer();
 
 // Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -156,12 +161,8 @@ buildArena();
 // RESIZE HANDLER
 // ============================================
 
-window.addEventListener('resize', () => {
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-});
+// Resize via ResizeObserver (works with flex layout)
+const ro = new ResizeObserver(() => resizeRenderer());
+ro.observe(container);
 
 export { scene, camera, renderer, world, physicsMaterials };

@@ -3,35 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Dice Roller</title>
+    <title>Dice Roller</title>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@300;400;600&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>🎲 3D Dice Roller</h1>
-    
-    <div id="canvas-container"></div>
-    
-    <div id="result"></div>
-    
-    <div id="controls">
-        <div class="control-group">
-            <label for="dice-count">Number of dice:</label>
+
+    <aside class="sidebar">
+        <h1>Dice Roller</h1>
+        <div class="divider"></div>
+
+        <div class="controls">
+            <label for="dice-count">Dice count</label>
             <input type="number" id="dice-count" min="1" max="15" value="2">
+            <div class="btn-row">
+                <button id="roll-btn" class="btn-roll">Roll</button>
+                <button id="reset-btn" class="btn-reset">Reset</button>
+            </div>
         </div>
-        <button id="roll-btn">🎲 ROLL</button>
-        <button id="reset-btn">↺ RESET</button>
-        <button id="skin-btn">🎨 SKIN<span id="skin-label">Classic</span></button>
-    </div>
-    
-    <div id="history-container">
-        <div id="history-header">
-            <h2>📜 Roll History</h2>
-            <button id="clear-history">Clear</button>
+
+        <div class="divider"></div>
+
+        <div class="history-header">
+            <span class="history-title">History</span>
+            <button id="clear-history" class="history-clear">clear</button>
         </div>
-        <div id="history">
-            <div class="empty-history">No rolls yet. Click ROLL to start!</div>
+        <div id="history" class="history-list">
+            <div class="empty-history">No rolls yet</div>
         </div>
-    </div>
+    </aside>
+
+    <main class="main">
+        <div id="canvas-container"></div>
+        <div id="result" class="result-bar"></div>
+    </main>
 
     <script type="importmap">
     {
@@ -41,7 +46,7 @@
         }
     }
     </script>
-    
+
     <script type="module" src="main.js"></script>
 </body>
 </html>

@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { scene, world, physicsMaterials } from './engine.js';
-import { getCurrentSkin } from './skins.js';
 
 const DICE_SIZE = 2.4;
 
@@ -12,15 +11,55 @@ const FACE_VALUES = [2, 5, 3, 4, 1, 6];
 const dice = [];
 
 // ============================================
+// TEXTURES
+// ============================================
+
+function createFaceTexture(value) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 256);
+
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, 248, 248);
+
+    const dotPositions = {
+        1: [[128, 128]],
+        2: [[64, 64], [192, 192]],
+        3: [[64, 64], [128, 128], [192, 192]],
+        4: [[64, 64], [192, 64], [64, 192], [192, 192]],
+        5: [[64, 64], [192, 64], [128, 128], [64, 192], [192, 192]],
+        6: [[64, 64], [64, 128], [64, 192], [192, 64], [192, 128], [192, 192]]
+    };
+
+    ctx.fillStyle = '#000000';
+    const positions = dotPositions[value];
+    const dotRadius = value === 1 ? 30 : 22;
+
+    positions.forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+// ============================================
 // MATERIALS
 // ============================================
 
 function createDiceMaterials() {
-    const skin = getCurrentSkin();
     return FACE_VALUES.map(val => new THREE.MeshStandardMaterial({
-        map: skin.createTexture(val),
-        roughness: skin.roughness,
-        metalness: skin.metalness
+        map: createFaceTexture(val),
+        roughness: 0.3,
+        metalness: 0.1
     }));
 }
 
@@ -80,19 +119,6 @@ function clearDice() {
         }
     });
     dice.length = 0;
-}
-
-/** Re-apply current skin to all dice on the board */
-function reskinAll() {
-    dice.forEach(die => {
-        if (Array.isArray(die.mesh.material)) {
-            die.mesh.material.forEach(m => {
-                if (m.map) m.map.dispose();
-                m.dispose();
-            });
-        }
-        die.mesh.material = createDiceMaterials();
-    });
 }
 
 // ============================================
@@ -237,4 +263,4 @@ function syncMeshes() {
     });
 }
 
-export { dice, isRolling, rollDice, clearDice, reskinAll, syncMeshes };
+export { dice, isRolling, rollDice, clearDice, syncMeshes };

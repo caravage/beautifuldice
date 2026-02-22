@@ -5,12 +5,12 @@
 const resultEl = document.getElementById('result');
 
 function showRolling() {
-    resultEl.textContent = 'Rolling...';
+    resultEl.textContent = 'Rolling\u2026';
 }
 
 function showResults(results) {
     const total = results.reduce((a, b) => a + b, 0);
-    resultEl.textContent = `Results: [${results.join(', ')}] = ${total}`;
+    resultEl.textContent = results.join(' + ') + ' = ' + total;
     addToHistory(results, total);
 }
 
@@ -34,20 +34,18 @@ function addToHistory(results, total) {
 
 function renderHistory() {
     if (history.length === 0) {
-        historyEl.innerHTML = '<div class="empty-history">No rolls yet. Click ROLL to start!</div>';
+        historyEl.innerHTML = '<div class="empty-history">No rolls yet</div>';
         return;
     }
 
     historyEl.innerHTML = history.map(entry => {
-        const diceHtml = entry.results.map(r => `<div class="history-die">${r}</div>`).join('');
-        const timeStr = entry.time.toLocaleTimeString();
+        const pips = entry.results
+            .map(r => `<span class="history-pip">${r}</span>`)
+            .join('');
         return `
-            <div class="history-entry">
-                <div class="history-dice">${diceHtml}</div>
-                <div>
-                    <span class="history-total">= ${entry.total}</span>
-                    <span class="history-time">${timeStr}</span>
-                </div>
+            <div class="history-row">
+                <div class="history-dice">${pips}</div>
+                <span class="history-total">${entry.total}</span>
             </div>
         `;
     }).join('');

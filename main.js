@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { renderer, scene, camera, world } from './engine.js';
-import { rollDice, clearDice, reskinAll, syncMeshes, isRolling } from './dice.js';
-import { cycleSkin, getCurrentSkin } from './skins.js';
+import { rollDice, clearDice, syncMeshes } from './dice.js';
 import { showRolling, showResults, clearResult, clearHistory } from './ui.js';
 
 // ============================================
@@ -28,8 +27,6 @@ animate();
 
 const rollBtn = document.getElementById('roll-btn');
 const resetBtn = document.getElementById('reset-btn');
-const skinBtn = document.getElementById('skin-btn');
-const skinLabel = document.getElementById('skin-label');
 const diceCountInput = document.getElementById('dice-count');
 
 rollBtn.addEventListener('click', async () => {
@@ -48,12 +45,6 @@ resetBtn.addEventListener('click', () => {
     clearDice();
     rollBtn.disabled = false;
     clearResult();
-});
-
-skinBtn.addEventListener('click', () => {
-    const newKey = cycleSkin();
-    skinLabel.textContent = getCurrentSkin().label;
-    reskinAll();
 });
 
 document.getElementById('clear-history').addEventListener('click', clearHistory);

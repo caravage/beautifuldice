@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Dice Roller</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>🎲 3D Dice Roller</h1>
+    
+    <div id="canvas-container"></div>
+    
+    <div id="result"></div>
+    
+    <div id="controls">
+        <div class="control-group">
+            <label for="dice-count">Number of dice:</label>
+            <input type="number" id="dice-count" min="1" max="15" value="2">
+        </div>
+        <button id="roll-btn">🎲 ROLL</button>
+        <button id="reset-btn">↺ RESET</button>
+        <button id="skin-btn">🎨 SKIN<span id="skin-label">Classic</span></button>
+    </div>
+    
+    <div id="history-container">
+        <div id="history-header">
+            <h2>📜 Roll History</h2>
+            <button id="clear-history">Clear</button>
+        </div>
+        <div id="history">
+            <div class="empty-history">No rolls yet. Click ROLL to start!</div>
+        </div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "cannon-es": "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
+        }
+    }
+    </script>
+    
+    <script type="module" src="main.js"></script>
+</body>
+</html>

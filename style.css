@@ -52,6 +52,45 @@ body {
     background: var(--border);
 }
 
+.hidden {
+    display: none;
+}
+
+/* ============================================
+   MODE TOGGLE
+   ============================================ */
+
+.mode-toggle {
+    display: flex;
+    gap: 8px;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-dim);
+    font-family: 'Libre Franklin', sans-serif;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.mode-btn:hover {
+    color: var(--text);
+    border-color: var(--text-dim);
+}
+
+.mode-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+}
+
 /* ============================================
    CONTROLS
    ============================================ */
@@ -168,6 +207,31 @@ body {
     color: var(--text-dim);
     opacity: 0.7;
     letter-spacing: 0.02em;
+}
+
+.operator-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.op-btn {
+    flex: 1;
+    min-width: 32px;
+    padding: 6px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.op-btn:hover {
+    color: var(--accent);
+    border-color: var(--text-dim);
 }
 
 /* ============================================

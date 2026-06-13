@@ -29,12 +29,47 @@ const resetBtn = document.getElementById('reset-btn');
 const diceCountInput = document.getElementById('dice-count');
 const commandInput = document.getElementById('command-input');
 
+// ============================================
+// ROLL MODE — SIMPLE / COMMAND
+// ============================================
+
+const modeSimpleBtn = document.getElementById('mode-simple-btn');
+const modeCommandBtn = document.getElementById('mode-command-btn');
+const controlsPanel = document.querySelector('.controls');
+const commandSection = document.querySelector('.command-section');
+
+let currentMode = 'simple';
+
+function setMode(mode) {
+    currentMode = mode;
+    controlsPanel.classList.toggle('hidden', mode === 'command');
+    commandSection.classList.toggle('hidden', mode === 'simple');
+    modeSimpleBtn.classList.toggle('active', mode === 'simple');
+    modeCommandBtn.classList.toggle('active', mode === 'command');
+    if (mode === 'command') commandInput.focus();
+}
+
+modeSimpleBtn.addEventListener('click', () => setMode('simple'));
+modeCommandBtn.addEventListener('click', () => setMode('command'));
+
+document.querySelectorAll('.op-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const text = btn.dataset.insert;
+        const start = commandInput.selectionStart ?? commandInput.value.length;
+        const end = commandInput.selectionEnd ?? commandInput.value.length;
+        commandInput.value = commandInput.value.slice(0, start) + text + commandInput.value.slice(end);
+        const pos = start + text.length;
+        commandInput.focus();
+        commandInput.setSelectionRange(pos, pos);
+    });
+});
+
 async function executeRoll() {
-    const cmd = commandInput.value.trim();
     let count;
     let condition = null;
 
-    if (cmd) {
+    if (currentMode === 'command') {
+        const cmd = commandInput.value.trim();
         try {
             const parsed = parse(cmd);
             count = parsed.count;

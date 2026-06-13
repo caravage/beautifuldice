@@ -2,7 +2,11 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { scene, world, physicsMaterials } from './engine.js';
 
-const DICE_SIZE = 2.4;
+let DICE_SIZE = 2.4;
+
+function setDiceSize(size) {
+    DICE_SIZE = size;
+}
 
 // Face order for BoxGeometry: +X, -X, +Y, -Y, +Z, -Z
 const FACE_VALUES = [2, 5, 3, 4, 1, 6];
@@ -287,4 +291,4 @@ function syncMeshes() {
     });
 }
 
-export { dice, isRolling, rollDice, clearDice, syncMeshes };
+export { dice, isRolling, rollDice, clearDice, syncMeshes, setDiceSize };

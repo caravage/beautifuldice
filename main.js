@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { renderer, scene, camera, world, visualSettings } from './engine.js';
-import { rollDice, clearDice, syncMeshes } from './dice.js';
+import { rollDice, clearDice, syncMeshes, setDiceSize } from './dice.js';
 import { showRolling, showResults, clearResult, clearHistory, showError } from './ui.js';
 import { parse } from './parser.js';
 
@@ -63,6 +63,29 @@ document.querySelectorAll('.op-btn').forEach(btn => {
         commandInput.setSelectionRange(pos, pos);
     });
 });
+
+// ============================================
+// DICE SIZE
+// ============================================
+
+const diceSizeDecBtn = document.getElementById('dice-size-dec');
+const diceSizeIncBtn = document.getElementById('dice-size-inc');
+const diceSizeValue = document.getElementById('dice-size-value');
+
+const DICE_SIZE_MIN = 1.2;
+const DICE_SIZE_MAX = 3.6;
+const DICE_SIZE_STEP = 0.2;
+
+let diceSize = 2.4;
+
+function updateDiceSize(size) {
+    diceSize = Math.min(DICE_SIZE_MAX, Math.max(DICE_SIZE_MIN, Math.round(size * 10) / 10));
+    diceSizeValue.textContent = diceSize.toFixed(1);
+    setDiceSize(diceSize);
+}
+
+diceSizeDecBtn.addEventListener('click', () => updateDiceSize(diceSize - DICE_SIZE_STEP));
+diceSizeIncBtn.addEventListener('click', () => updateDiceSize(diceSize + DICE_SIZE_STEP));
 
 async function executeRoll() {
     let count;

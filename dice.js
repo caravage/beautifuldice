@@ -90,7 +90,7 @@ function createDie() {
     });
     world.addBody(body);
 
-    const die = { mesh, body };
+    const die = { mesh, body, size: DICE_SIZE, nudgeAttempts: 0 };
     dice.push(die);
     return die;
 }
@@ -182,11 +182,16 @@ function waitForStop() {
             if (!allStopped) return;
 
             // A die can come to rest balanced on an edge or corner. Give
-            // it a small nudge so it always settles flat on a face.
-            let nudged = false;
+            // it a few small nudges so it falls flat naturally; if it
+            // keeps landing on an edge, flatten it directly.
+            let unsettled = false;
             dice.forEach(die => {
-                if (getRestingFace(die).dot < SETTLE_DOT_THRESHOLD) {
-                    nudged = true;
+                const resting = getRestingFace(die);
+                if (resting.dot >= SETTLE_DOT_THRESHOLD) return;
+
+                unsettled = true;
+                if (die.nudgeAttempts < MAX_NUDGE_ATTEMPTS) {
+                    die.nudgeAttempts++;
                     die.body.angularVelocity.set(
                         (Math.random() - 0.5) * 6,
                         (Math.random() - 0.5) * 6,
@@ -194,9 +199,11 @@ function waitForStop() {
                     );
                     die.body.velocity.y += 2;
                     die.body.wakeUp();
+                } else {
+                    flattenDie(die, resting);
                 }
             });
-            if (nudged) return;
+            if (unsettled) return;
 
             clearInterval(checkInterval);
             setTimeout(() => {
@@ -237,6 +244,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 // (1 = perfectly flat, ~0.7 = balanced on an edge, ~0.58 = on a corner)
 const SETTLE_DOT_THRESHOLD = 0.97;
 
+// Number of physics nudges to try before forcing the die flat
+const MAX_NUDGE_ATTEMPTS = 3;
+
 /** Returns the face value most aligned with "up" and how flat it's resting (1 = flat) */
 function getRestingFace(die) {
     const q = new THREE.Quaternion(
@@ -258,6 +268,26 @@ function getRestingFace(die) {
     });
 
     return { value, dot: maxDot };
+}
+
+/** Rotates a stuck die so its resting face points straight up, and rests it on the floor */
+function flattenDie(die, resting) {
+    const face = FACE_DIRS.find(f => f.value === resting.value);
+    const q = new THREE.Quaternion(
+        die.body.quaternion.x,
+        die.body.quaternion.y,
+        die.body.quaternion.z,
+        die.body.quaternion.w
+    );
+
+    const currentUp = face.dir.clone().applyQuaternion(q).normalize();
+    const correction = new THREE.Quaternion().setFromUnitVectors(currentUp, UP);
+    const flattened = correction.multiply(q);
+
+    die.body.quaternion.set(flattened.x, flattened.y, flattened.z, flattened.w);
+    die.body.position.y = die.size / 2;
+    die.body.velocity.setZero();
+    die.body.angularVelocity.setZero();
 }
 
 function readResults() {

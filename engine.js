@@ -10,7 +10,6 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1c1c1e);
 
-// Use a small default; ResizeObserver will fix it on first frame
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
 camera.position.set(0, 30, 0);
 camera.lookAt(0, 0, 0);
@@ -94,7 +93,6 @@ const ARENA = {
 };
 
 function buildArena() {
-    // Hex floor shape
     const shape = new THREE.Shape();
     for (let i = 0; i < ARENA.sides; i++) {
         const angle = (i / ARENA.sides) * Math.PI * 2 + ARENA.rotation;
@@ -105,7 +103,7 @@ function buildArena() {
     }
     shape.closePath();
 
-    // Visual floor
+    // Visual floor (green felt)
     const floorGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
     floorGeo.rotateX(-Math.PI / 2);
     const floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
@@ -156,10 +154,6 @@ function buildArena() {
 }
 
 buildArena();
-
-// ============================================
-// RESIZE HANDLER
-// ============================================
 
 // Resize via ResizeObserver (works with flex layout)
 const ro = new ResizeObserver(() => resizeRenderer());

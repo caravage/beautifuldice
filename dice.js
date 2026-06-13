@@ -70,7 +70,6 @@ function createDiceMaterials() {
 function createDie() {
     const geometry = new THREE.BoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 1, 1, 1);
 
-    // Slightly round the corners
     const posAttr = geometry.getAttribute('position');
     const v = new THREE.Vector3();
     const roundFactor = 0.30;
@@ -128,7 +127,7 @@ function clearDice() {
 let isRolling = false;
 
 function rollDice(count) {
-    if (isRolling) return;
+    if (isRolling) return Promise.resolve([]);
     isRolling = true;
 
     clearDice();
@@ -136,7 +135,6 @@ function rollDice(count) {
     for (let i = 0; i < count; i++) {
         const die = createDie();
 
-        // Random spawn within a small central area
         const angle = Math.random() * Math.PI * 2;
         const radius = Math.random() * 4;
         die.body.position.set(
@@ -145,7 +143,6 @@ function rollDice(count) {
             Math.sin(angle) * radius
         );
 
-        // Random initial rotation
         die.body.quaternion.setFromEuler(
             Math.random() * Math.PI * 2,
             Math.random() * Math.PI * 2,
@@ -155,7 +152,6 @@ function rollDice(count) {
         die.body.velocity.setZero();
         die.body.angularVelocity.setZero();
 
-        // Randomized throw impulse
         const strength = 8 + Math.random() * 20;
         const throwAngle = Math.random() * Math.PI * 2;
         die.body.applyImpulse(
@@ -167,7 +163,6 @@ function rollDice(count) {
             new CANNON.Vec3(0, 0, 0)
         );
 
-        // Randomized spin
         const spin = 10 + Math.random() * 25;
         die.body.angularVelocity.set(
             (Math.random() - 0.5) * spin,
@@ -181,7 +176,6 @@ function rollDice(count) {
     return waitForStop();
 }
 
-/** Returns a Promise that resolves with the results array once dice stop */
 function waitForStop() {
     return new Promise(resolve => {
         const checkInterval = setInterval(() => {
@@ -200,7 +194,6 @@ function waitForStop() {
             }
         }, 100);
 
-        // Safety timeout
         setTimeout(() => {
             if (isRolling) {
                 clearInterval(checkInterval);
@@ -253,7 +246,7 @@ function readResults() {
 }
 
 // ============================================
-// SYNC (called each frame from main loop)
+// SYNC (called each frame)
 // ============================================
 
 function syncMeshes() {

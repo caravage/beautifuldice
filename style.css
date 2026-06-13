@@ -8,6 +8,9 @@
     --text: #e5e5e7;
     --text-dim: #8e8e93;
     --accent: #f5f5f7;
+    --hit: #4ade80;
+    --hit-dim: rgba(74, 222, 128, 0.15);
+    --error: #f87171;
 }
 
 body {
@@ -58,7 +61,8 @@ body {
     gap: 14px;
 }
 
-.controls label {
+.controls label,
+.command-section label {
     font-size: 0.72rem;
     color: var(--text-dim);
     text-transform: uppercase;
@@ -124,6 +128,45 @@ body {
 .btn-reset:hover {
     color: var(--text);
     border-color: var(--text-dim);
+}
+
+/* ============================================
+   COMMAND INPUT
+   ============================================ */
+
+.command-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.command-section input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 1rem;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    letter-spacing: 0.04em;
+}
+
+.command-section input[type="text"]::placeholder {
+    color: var(--text-dim);
+    opacity: 0.6;
+}
+
+.command-section input[type="text"]:focus {
+    outline: none;
+    border-color: var(--text-dim);
+}
+
+.command-hint {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    opacity: 0.7;
+    letter-spacing: 0.02em;
 }
 
 /* ============================================
@@ -195,10 +238,28 @@ body {
     font-weight: 400;
 }
 
+.history-pip.history-hit {
+    border-color: var(--hit);
+    color: var(--hit);
+    background: var(--hit-dim);
+}
+
+.history-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .history-total {
     font-weight: 600;
     color: var(--accent);
     font-variant-numeric: tabular-nums;
+}
+
+.history-hits {
+    font-size: 0.68rem;
+    color: var(--hit);
+    font-weight: 600;
 }
 
 .empty-history {
@@ -236,6 +297,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
     padding: 12px;
     background: var(--surface);
     border-radius: 8px;
@@ -246,4 +308,24 @@ body {
     color: var(--accent);
     letter-spacing: 0.03em;
     min-height: 48px;
+    flex-wrap: wrap;
+}
+
+.result-bar.result-error {
+    color: var(--error);
+}
+
+.result-hit {
+    color: var(--hit);
+}
+
+.result-successes {
+    margin-left: 12px;
+    font-size: 0.8rem;
+    color: var(--hit);
+    border: 1px solid var(--hit);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-family: 'Libre Franklin', sans-serif;
+    font-weight: 600;
 }

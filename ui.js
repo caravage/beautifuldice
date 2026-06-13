@@ -1,3 +1,5 @@
+import { matches } from './parser.js';
+
 // ============================================
 // RESULT DISPLAY
 // ============================================
@@ -8,14 +10,47 @@ function showRolling() {
     resultEl.textContent = 'Rolling\u2026';
 }
 
-function showResults(results) {
+/**
+ * Display results with optional highlighting.
+ * @param {number[]} results
+ * @param {{ op: string, value: number } | null} condition
+ */
+function showResults(results, condition) {
     const total = results.reduce((a, b) => a + b, 0);
-    resultEl.textContent = results.join(' + ') + ' = ' + total;
-    addToHistory(results, total);
+
+    if (!condition) {
+        resultEl.textContent = results.join(' + ') + ' = ' + total;
+    } else {
+        resultEl.innerHTML = '';
+        results.forEach((r, i) => {
+            if (i > 0) resultEl.append(' + ');
+            const span = document.createElement('span');
+            span.textContent = r;
+            if (matches(r, condition)) {
+                span.classList.add('result-hit');
+            }
+            resultEl.appendChild(span);
+        });
+        const successes = results.filter(r => matches(r, condition)).length;
+        resultEl.append(` = ${total}`);
+
+        const tag = document.createElement('span');
+        tag.classList.add('result-successes');
+        tag.textContent = `${successes} hit${successes !== 1 ? 's' : ''}`;
+        resultEl.appendChild(tag);
+    }
+
+    addToHistory(results, total, condition);
 }
 
 function clearResult() {
     resultEl.textContent = '';
+}
+
+function showError(msg) {
+    resultEl.textContent = msg;
+    resultEl.classList.add('result-error');
+    setTimeout(() => resultEl.classList.remove('result-error'), 2000);
 }
 
 // ============================================
@@ -25,9 +60,9 @@ function clearResult() {
 let history = [];
 const historyEl = document.getElementById('history');
 
-function addToHistory(results, total) {
+function addToHistory(results, total, condition) {
     const sorted = [...results].sort((a, b) => b - a);
-    history.unshift({ results: sorted, total, time: new Date() });
+    history.unshift({ results: sorted, total, condition, time: new Date() });
     if (history.length > 50) history = history.slice(0, 50);
     renderHistory();
 }
@@ -40,12 +75,22 @@ function renderHistory() {
 
     historyEl.innerHTML = history.map(entry => {
         const pips = entry.results
-            .map(r => `<span class="history-pip">${r}</span>`)
+            .map(r => {
+                const hit = matches(r, entry.condition);
+                return `<span class="history-pip${hit ? ' history-hit' : ''}">${r}</span>`;
+            })
             .join('');
+
+        let totalHtml = `<span class="history-total">${entry.total}</span>`;
+        if (entry.condition) {
+            const hits = entry.results.filter(r => matches(r, entry.condition)).length;
+            totalHtml += `<span class="history-hits">${hits}h</span>`;
+        }
+
         return `
             <div class="history-row">
                 <div class="history-dice">${pips}</div>
-                <span class="history-total">${entry.total}</span>
+                <div class="history-right">${totalHtml}</div>
             </div>
         `;
     }).join('');
@@ -59,4 +104,4 @@ function clearHistory() {
 // Init
 renderHistory();
 
-export { showRolling, showResults, clearResult, clearHistory };
+export { showRolling, showResults, clearResult, clearHistory, showError };

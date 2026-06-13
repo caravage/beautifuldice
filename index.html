@@ -32,6 +32,59 @@
 
         <div class="divider"></div>
 
+        <details class="settings-panel">
+            <summary class="settings-toggle">View settings</summary>
+            <div class="settings-content">
+
+                <div class="setting-row">
+                    <span class="setting-label">Shadows</span>
+                    <input type="checkbox" id="setting-shadows" checked>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">Shadow quality</span>
+                    <select id="setting-shadow-quality">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high" selected>High</option>
+                    </select>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">Elevation</span>
+                    <span class="setting-value" id="val-elevation">0&deg;</span>
+                </div>
+                <input type="range" id="setting-elevation" min="0" max="75" value="0" step="1">
+
+                <div class="setting-row">
+                    <span class="setting-label">Distance</span>
+                    <span class="setting-value" id="val-distance">30</span>
+                </div>
+                <input type="range" id="setting-distance" min="15" max="60" value="30" step="1">
+
+                <div class="setting-row">
+                    <span class="setting-label">Rotation</span>
+                    <span class="setting-value" id="val-rotation">0&deg;</span>
+                </div>
+                <input type="range" id="setting-rotation" min="0" max="360" value="0" step="1">
+
+                <div class="setting-row">
+                    <span class="setting-label">Ambient light</span>
+                    <span class="setting-value" id="val-ambient">0.5</span>
+                </div>
+                <input type="range" id="setting-ambient" min="0" max="2" value="0.5" step="0.1">
+
+                <div class="setting-row">
+                    <span class="setting-label">Direct light</span>
+                    <span class="setting-value" id="val-directional">0.8</span>
+                </div>
+                <input type="range" id="setting-directional" min="0" max="2" value="0.8" step="0.1">
+
+            </div>
+        </details>
+
+        <div class="divider"></div>
+
         <div class="history-header">
             <span class="history-title">History</span>
             <button id="clear-history" class="history-clear">clear</button>

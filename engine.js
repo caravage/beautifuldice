@@ -10,6 +10,7 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1c1c1e);
 
+// Use a small default; ResizeObserver will fix it on first frame
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
 camera.position.set(0, 30, 0);
 camera.lookAt(0, 0, 0);
@@ -103,7 +104,7 @@ function buildArena() {
     }
     shape.closePath();
 
-    // Visual floor (green felt)
+    // Visual floor
     const floorGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: false });
     floorGeo.rotateX(-Math.PI / 2);
     const floorMesh = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({
@@ -155,8 +156,80 @@ function buildArena() {
 
 buildArena();
 
-// Resize via ResizeObserver (works with flex layout)
+// ============================================
+// VISUAL SETTINGS API
+// ============================================
+
+const cameraState = { elevation: 0, distance: 30, rotation: 0 };
+
+function updateCameraPosition() {
+    const el = cameraState.elevation * (Math.PI / 180); // degrees to rad
+    const rot = cameraState.rotation * (Math.PI / 180);
+    const d = cameraState.distance;
+
+    camera.position.set(
+        d * Math.sin(el) * Math.sin(rot),
+        d * Math.cos(el),
+        d * Math.sin(el) * Math.cos(rot)
+    );
+    camera.lookAt(0, 0, 0);
+
+    // Keep "up" stable — only tilt when nearly horizontal
+    if (cameraState.elevation < 80) {
+        camera.up.set(0, 1, 0);
+    }
+}
+
+const visualSettings = {
+    setShadows(enabled) {
+        renderer.shadowMap.enabled = enabled;
+        directionalLight.castShadow = enabled;
+        // Force materials to recompile
+        scene.traverse(obj => {
+            if (obj.isMesh) obj.material.needsUpdate = true;
+        });
+    },
+
+    setShadowQuality(level) {
+        const sizes = { low: 512, medium: 1024, high: 2048 };
+        const size = sizes[level] || 2048;
+        directionalLight.shadow.mapSize.width = size;
+        directionalLight.shadow.mapSize.height = size;
+        if (directionalLight.shadow.map) {
+            directionalLight.shadow.map.dispose();
+            directionalLight.shadow.map = null;
+        }
+    },
+
+    setAmbientIntensity(value) {
+        ambientLight.intensity = value;
+    },
+
+    setDirectionalIntensity(value) {
+        directionalLight.intensity = value;
+    },
+
+    setCameraElevation(degrees) {
+        cameraState.elevation = degrees;
+        updateCameraPosition();
+    },
+
+    setCameraDistance(distance) {
+        cameraState.distance = distance;
+        updateCameraPosition();
+    },
+
+    setCameraRotation(degrees) {
+        cameraState.rotation = degrees;
+        updateCameraPosition();
+    }
+};
+
+// ============================================
+// RESIZE HANDLER
+// ============================================
+
 const ro = new ResizeObserver(() => resizeRenderer());
 ro.observe(container);
 
-export { scene, camera, renderer, world, physicsMaterials };
+export { scene, camera, renderer, world, physicsMaterials, visualSettings };

@@ -10,11 +10,6 @@ function showRolling() {
     resultEl.textContent = 'Rolling\u2026';
 }
 
-/**
- * Display results with optional highlighting.
- * @param {number[]} results
- * @param {{ op: string, value: number } | null} condition
- */
 function showResults(results, condition) {
     const total = results.reduce((a, b) => a + b, 0);
 
@@ -26,14 +21,12 @@ function showResults(results, condition) {
             if (i > 0) resultEl.append(' + ');
             const span = document.createElement('span');
             span.textContent = r;
-            if (matches(r, condition)) {
-                span.classList.add('result-hit');
-            }
+            if (matches(r, condition)) span.classList.add('result-hit');
             resultEl.appendChild(span);
         });
-        const successes = results.filter(r => matches(r, condition)).length;
         resultEl.append(` = ${total}`);
 
+        const successes = results.filter(r => matches(r, condition)).length;
         const tag = document.createElement('span');
         tag.classList.add('result-successes');
         tag.textContent = `${successes} hit${successes !== 1 ? 's' : ''}`;
@@ -101,7 +94,6 @@ function clearHistory() {
     renderHistory();
 }
 
-// Init
 renderHistory();
 
 export { showRolling, showResults, clearResult, clearHistory, showError };

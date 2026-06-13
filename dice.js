@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { scene, world, physicsMaterials } from './engine.js';
 
 let DICE_SIZE = 2.4;
@@ -72,25 +73,8 @@ function createDiceMaterials() {
 // ============================================
 
 function createDie() {
-    const geometry = new THREE.BoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 2, 2, 2);
-
-    // Slightly round the corners (needs >=2 segments so corner vertices
-    // are distinct from edge/face vertices)
-    const posAttr = geometry.getAttribute('position');
-    const v = new THREE.Vector3();
-    const roundFactor = 0.15;
-    const threshold = DICE_SIZE / 2 - 0.01;
-
-    for (let i = 0; i < posAttr.count; i++) {
-        v.fromBufferAttribute(posAttr, i);
-        if (Math.abs(v.x) > threshold &&
-            Math.abs(v.y) > threshold &&
-            Math.abs(v.z) > threshold) {
-            v.multiplyScalar(1 - roundFactor);
-        }
-        posAttr.setXYZ(i, v.x, v.y, v.z);
-    }
-    geometry.computeVertexNormals();
+    const radius = DICE_SIZE * 0.08;
+    const geometry = new RoundedBoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 2, radius);
 
     const mesh = new THREE.Mesh(geometry, createDiceMaterials());
     mesh.castShadow = true;

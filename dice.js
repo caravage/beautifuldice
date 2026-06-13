@@ -68,12 +68,13 @@ function createDiceMaterials() {
 // ============================================
 
 function createDie() {
-    const geometry = new THREE.BoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 1, 1, 1);
+    const geometry = new THREE.BoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 2, 2, 2);
 
-    // Slightly round the corners
+    // Slightly round the corners (needs >=2 segments so corner vertices
+    // are distinct from edge/face vertices)
     const posAttr = geometry.getAttribute('position');
     const v = new THREE.Vector3();
-    const roundFactor = 0.30;
+    const roundFactor = 0.15;
     const threshold = DICE_SIZE / 2 - 0.01;
 
     for (let i = 0; i < posAttr.count; i++) {
@@ -190,14 +191,31 @@ function waitForStop() {
                 die.body.angularVelocity.length() < 0.1
             );
 
-            if (allStopped) {
-                clearInterval(checkInterval);
-                setTimeout(() => {
-                    const results = readResults();
-                    isRolling = false;
-                    resolve(results);
-                }, 300);
-            }
+            if (!allStopped) return;
+
+            // A die can come to rest balanced on an edge or corner. Give
+            // it a small nudge so it always settles flat on a face.
+            let nudged = false;
+            dice.forEach(die => {
+                if (getRestingFace(die).dot < SETTLE_DOT_THRESHOLD) {
+                    nudged = true;
+                    die.body.angularVelocity.set(
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 6
+                    );
+                    die.body.velocity.y += 2;
+                    die.body.wakeUp();
+                }
+            });
+            if (nudged) return;
+
+            clearInterval(checkInterval);
+            setTimeout(() => {
+                const results = readResults();
+                isRolling = false;
+                resolve(results);
+            }, 300);
         }, 100);
 
         // Safety timeout
@@ -225,31 +243,37 @@ const FACE_DIRS = [
     { dir: new THREE.Vector3(0, 0, -1), value: 6 }
 ];
 
-function readResults() {
-    const up = new THREE.Vector3(0, 1, 0);
+const UP = new THREE.Vector3(0, 1, 0);
 
-    return dice.map(die => {
-        const q = new THREE.Quaternion(
-            die.body.quaternion.x,
-            die.body.quaternion.y,
-            die.body.quaternion.z,
-            die.body.quaternion.w
-        );
+// How aligned a face normal must be with "up" to count as resting flat
+// (1 = perfectly flat, ~0.7 = balanced on an edge, ~0.58 = on a corner)
+const SETTLE_DOT_THRESHOLD = 0.97;
 
-        let maxDot = -Infinity;
-        let result = 1;
+/** Returns the face value most aligned with "up" and how flat it's resting (1 = flat) */
+function getRestingFace(die) {
+    const q = new THREE.Quaternion(
+        die.body.quaternion.x,
+        die.body.quaternion.y,
+        die.body.quaternion.z,
+        die.body.quaternion.w
+    );
 
-        FACE_DIRS.forEach(face => {
-            const rotated = face.dir.clone().applyQuaternion(q);
-            const dot = rotated.dot(up);
-            if (dot > maxDot) {
-                maxDot = dot;
-                result = face.value;
-            }
-        });
+    let maxDot = -Infinity;
+    let value = 1;
 
-        return result;
+    FACE_DIRS.forEach(face => {
+        const dot = face.dir.clone().applyQuaternion(q).dot(UP);
+        if (dot > maxDot) {
+            maxDot = dot;
+            value = face.value;
+        }
     });
+
+    return { value, dot: maxDot };
+}
+
+function readResults() {
+    return dice.map(die => getRestingFace(die).value);
 }
 
 // ============================================

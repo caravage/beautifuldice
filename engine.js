@@ -11,10 +11,8 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1c1c1e);
 
 // Use a small default; ResizeObserver will fix it on first frame
+// Position/orientation are set by updateCameraPosition() below
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-camera.position.set(0, 30, 0);
-camera.lookAt(0, 0, 0);
-camera.up.set(0, 0, -1);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.shadowMap.enabled = true;
@@ -172,13 +170,22 @@ function updateCameraPosition() {
         d * Math.cos(el),
         d * Math.sin(el) * Math.cos(rot)
     );
-    camera.lookAt(0, 0, 0);
 
-    // Keep "up" stable — only tilt when nearly horizontal
-    if (cameraState.elevation < 80) {
+    if (cameraState.elevation === 0) {
+        // Looking straight down: world "up" is parallel to the view
+        // direction, so derive a horizontal up vector from the rotation
+        // angle instead — this also makes the rotation slider spin the
+        // top-down view.
+        camera.up.set(Math.sin(rot), 0, Math.cos(rot));
+    } else {
         camera.up.set(0, 1, 0);
     }
+
+    camera.lookAt(0, 0, 0);
 }
+
+// Apply the initial camera position/orientation
+updateCameraPosition();
 
 const visualSettings = {
     setShadows(enabled) {

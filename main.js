@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { renderer, scene, camera, world, visualSettings } from './engine.js';
 import { rollDice, clearDice, syncMeshes, setDiceSize } from './dice.js';
-import { showRolling, showResults, clearResult, clearHistory, showError } from './ui.js';
+import { showRolling, showWargameRolling, showResults, showWargameResults, clearResult, clearHistory, showError } from './ui.js';
 import { parse } from './parser.js';
 
 // ============================================
@@ -35,22 +35,31 @@ const commandInput = document.getElementById('command-input');
 
 const modeSimpleBtn = document.getElementById('mode-simple-btn');
 const modeCommandBtn = document.getElementById('mode-command-btn');
+const modeWargameBtn = document.getElementById('mode-wargame-btn');
 const controlsPanel = document.querySelector('.controls');
 const commandSection = document.querySelector('.command-section');
+const wargameSection = document.querySelector('.wargame-section');
+const resultEl = document.getElementById('result');
+const wargameResultEl = document.getElementById('wargame-result');
 
 let currentMode = 'simple';
 
 function setMode(mode) {
     currentMode = mode;
-    controlsPanel.classList.toggle('hidden', mode === 'command');
-    commandSection.classList.toggle('hidden', mode === 'simple');
+    controlsPanel.classList.toggle('hidden', mode !== 'simple');
+    commandSection.classList.toggle('hidden', mode !== 'command');
+    wargameSection.classList.toggle('hidden', mode !== 'wargame');
+    resultEl.classList.toggle('hidden', mode === 'wargame');
+    wargameResultEl.classList.toggle('hidden', mode !== 'wargame');
     modeSimpleBtn.classList.toggle('active', mode === 'simple');
     modeCommandBtn.classList.toggle('active', mode === 'command');
+    modeWargameBtn.classList.toggle('active', mode === 'wargame');
     if (mode === 'command') commandInput.focus();
 }
 
 modeSimpleBtn.addEventListener('click', () => setMode('simple'));
 modeCommandBtn.addEventListener('click', () => setMode('command'));
+modeWargameBtn.addEventListener('click', () => setMode('wargame'));
 
 document.querySelectorAll('.op-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -87,9 +96,36 @@ function updateDiceSize(size) {
 diceSizeDecBtn.addEventListener('click', () => updateDiceSize(diceSize - DICE_SIZE_STEP));
 diceSizeIncBtn.addEventListener('click', () => updateDiceSize(diceSize + DICE_SIZE_STEP));
 
+// ============================================
+// WARGAME DICE COUNTS
+// ============================================
+
+const WARGAME_MAX_TOTAL = 15;
+
+const wargameCounts = { infantry: 0, cavalry: 0, fortress: 0, ship: 0 };
+
+function wargameTotal() {
+    return Object.values(wargameCounts).reduce((a, b) => a + b, 0);
+}
+
+function updateWargameCount(type, delta) {
+    const next = wargameCounts[type] + delta;
+    if (next < 0) return;
+    if (delta > 0 && wargameTotal() >= WARGAME_MAX_TOTAL) return;
+    wargameCounts[type] = next;
+    document.getElementById(`count-${type}`).textContent = next;
+}
+
+document.querySelectorAll('.wargame-count-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        updateWargameCount(btn.dataset.type, parseInt(btn.dataset.delta, 10));
+    });
+});
+
 async function executeRoll() {
     let count;
     let condition = null;
+    const wargame = currentMode === 'wargame';
 
     if (currentMode === 'command') {
         const cmd = commandInput.value.trim();
@@ -105,16 +141,22 @@ async function executeRoll() {
             showError(e.message);
             return;
         }
+    } else if (wargame) {
+        count = Object.entries(wargameCounts).flatMap(([type, n]) => Array(n).fill(type));
+        if (count.length === 0) {
+            showError('Select at least one die');
+            return;
+        }
     } else {
         count = Math.max(1, Math.min(15, parseInt(diceCountInput.value) || 1));
         diceCountInput.value = count;
     }
 
     rollBtn.disabled = true;
-    showRolling();
+    if (wargame) showWargameRolling(); else showRolling();
 
     const results = await rollDice(count);
-    showResults(results, condition);
+    if (wargame) showWargameResults(results); else showResults(results, condition);
     rollBtn.disabled = false;
 }
 

@@ -16,6 +16,7 @@
         <div class="mode-toggle">
             <button id="mode-simple-btn" class="mode-btn active">Simple</button>
             <button id="mode-command-btn" class="mode-btn">Command</button>
+            <button id="mode-wargame-btn" class="mode-btn">Wargame</button>
         </div>
 
         <div class="size-row">
@@ -42,6 +43,41 @@
                 <button type="button" class="op-btn" data-insert="=">=</button>
             </div>
             <div class="command-hint">3d6 &middot; 2d6&gt;4 &middot; d6&gt;=5</div>
+        </div>
+
+        <div class="wargame-section hidden">
+            <div class="size-row">
+                <span class="size-label">Infantry</span>
+                <div class="size-controls">
+                    <button type="button" class="size-btn wargame-count-btn" data-type="infantry" data-delta="-1">&minus;</button>
+                    <span class="size-value" id="count-infantry">0</span>
+                    <button type="button" class="size-btn wargame-count-btn" data-type="infantry" data-delta="1">+</button>
+                </div>
+            </div>
+            <div class="size-row">
+                <span class="size-label">Cavalry</span>
+                <div class="size-controls">
+                    <button type="button" class="size-btn wargame-count-btn" data-type="cavalry" data-delta="-1">&minus;</button>
+                    <span class="size-value" id="count-cavalry">0</span>
+                    <button type="button" class="size-btn wargame-count-btn" data-type="cavalry" data-delta="1">+</button>
+                </div>
+            </div>
+            <div class="size-row">
+                <span class="size-label">Fortress</span>
+                <div class="size-controls">
+                    <button type="button" class="size-btn wargame-count-btn" data-type="fortress" data-delta="-1">&minus;</button>
+                    <span class="size-value" id="count-fortress">0</span>
+                    <button type="button" class="size-btn wargame-count-btn" data-type="fortress" data-delta="1">+</button>
+                </div>
+            </div>
+            <div class="size-row">
+                <span class="size-label">Ship</span>
+                <div class="size-controls">
+                    <button type="button" class="size-btn wargame-count-btn" data-type="ship" data-delta="-1">&minus;</button>
+                    <span class="size-value" id="count-ship">0</span>
+                    <button type="button" class="size-btn wargame-count-btn" data-type="ship" data-delta="1">+</button>
+                </div>
+            </div>
         </div>
 
         <div class="btn-row">
@@ -116,6 +152,7 @@
     <main class="main">
         <div id="canvas-container"></div>
         <div id="result" class="result-bar"></div>
+        <div id="wargame-result" class="wargame-result hidden"></div>
     </main>
 
     <script type="importmap">

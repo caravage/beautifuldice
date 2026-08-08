@@ -65,12 +65,12 @@ function createNumberTexture(value) {
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#18181b';
     ctx.fillRect(0, 0, 256, 256);
 
     const label = String(value);
-    ctx.fillStyle = '#000000';
-    ctx.font = `bold ${label.length > 1 ? 96 : 120}px 'Libre Franklin', sans-serif`;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${label.length > 1 ? 76 : 96}px 'Libre Franklin', sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, 128, 128);
@@ -78,7 +78,7 @@ function createNumberTexture(value) {
     // 6 and 9 are indistinguishable upside down, so underline them
     if (value === 6 || value === 9) {
         const w = ctx.measureText(label).width;
-        ctx.fillRect(128 - w / 2, 196, w, 10);
+        ctx.fillRect(128 - w / 2, 184, w, 8);
     }
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -174,9 +174,11 @@ function createD10Geometry(radius) {
         p.forEach(v => centroid.add(v));
         centroid.divideScalar(p.length);
 
-        // Flatten the kite into its own plane so the number lands centred on it
+        // Flatten the kite into its own plane so the number lands centred on it.
+        // uAxis x vAxis must equal the outward normal, otherwise the texture
+        // comes out mirrored when read from outside the die.
         const vAxis = new THREE.Vector3().subVectors(p[0], centroid).normalize();
-        const uAxis = new THREE.Vector3().crossVectors(n, vAxis).normalize();
+        const uAxis = new THREE.Vector3().crossVectors(vAxis, n).normalize();
         const flat = p.map(v => {
             const d = new THREE.Vector3().subVectors(v, centroid);
             return [d.dot(uAxis), d.dot(vAxis)];

@@ -12,8 +12,8 @@ function setDiceSize(size) {
 // Face order for BoxGeometry: +X, -X, +Y, -Y, +Z, -Z
 const FACE_VALUES = [2, 5, 3, 4, 1, 6];
 
-// D10 face labels (decorative — actual result is random 1–10 after animation)
-const D10_FACE_LABELS = [0, 1, 2, 3, 4, 5];
+// A d10 is drawn a little larger than a d6 so the two read as the same size
+const D10_RADIUS_RATIO = 0.6;
 
 // All live dice on the board
 const dice = [];
@@ -59,6 +59,33 @@ function createFaceTexture(value) {
     return texture;
 }
 
+function createNumberTexture(value) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 256);
+
+    const label = String(value);
+    ctx.fillStyle = '#000000';
+    ctx.font = `bold ${label.length > 1 ? 96 : 120}px 'Libre Franklin', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 128, 128);
+
+    // 6 and 9 are indistinguishable upside down, so underline them
+    if (value === 6 || value === 9) {
+        const w = ctx.measureText(label).width;
+        ctx.fillRect(128 - w / 2, 196, w, 10);
+    }
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
 // ============================================
 // MATERIALS
 // ============================================
@@ -71,61 +98,186 @@ function createDiceMaterials() {
     }));
 }
 
-function createNumberTexture(label) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 256, 256);
-
-    ctx.strokeStyle = '#cccccc';
-    ctx.lineWidth = 8;
-    ctx.strokeRect(4, 4, 248, 248);
-
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 130px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(String(label), 128, 132);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.needsUpdate = true;
-    return texture;
-}
-
 function createD10Materials() {
-    return D10_FACE_LABELS.map(label => new THREE.MeshStandardMaterial({
-        map: createNumberTexture(label),
+    return D10_SHAPE.faces.map((_, i) => new THREE.MeshStandardMaterial({
+        map: createNumberTexture(i + 1),
         roughness: 0.3,
         metalness: 0.1
     }));
 }
 
 // ============================================
+// D10 SHAPE — PENTAGONAL TRAPEZOHEDRON
+// ============================================
+
+/**
+ * The 10-sided die: two apexes plus ten alternating equator vertices, giving
+ * ten kite-shaped faces. Faces are wound counter-clockwise seen from outside,
+ * which is what both THREE and CANNON expect.
+ */
+function buildD10Shape() {
+    const c = Math.cos(Math.PI / 5);
+
+    // The one equator offset that leaves every kite perfectly planar
+    const ringY = (1 - c) / (1 + c);
+
+    const vertices = [];
+    for (let i = 0; i < 10; i++) {
+        const a = (Math.PI * 2 * i) / 10;
+        vertices.push(new THREE.Vector3(
+            Math.cos(a),
+            i % 2 === 0 ? ringY : -ringY,
+            Math.sin(a)
+        ));
+    }
+
+    const TOP = vertices.push(new THREE.Vector3(0, 1, 0)) - 1;
+    const BOTTOM = vertices.push(new THREE.Vector3(0, -1, 0)) - 1;
+
+    // Even faces hang off the top apex, odd faces off the bottom one. The two
+    // halves are mirror images, so they wind in opposite directions.
+    const faces = [];
+    for (let i = 0; i < 10; i++) {
+        const ring = [i, (i + 1) % 10, (i + 2) % 10];
+        if (i % 2 === 0) {
+            faces.push([TOP, ...ring.reverse()]);
+        } else {
+            faces.push([BOTTOM, ...ring]);
+        }
+    }
+
+    return { vertices, faces };
+}
+
+const D10_SHAPE = buildD10Shape();
+
+/** Outward normal of a face, from its first three (counter-clockwise) vertices */
+function faceNormal(points) {
+    return new THREE.Vector3()
+        .subVectors(points[1], points[0])
+        .cross(new THREE.Vector3().subVectors(points[2], points[0]))
+        .normalize();
+}
+
+function createD10Geometry(radius) {
+    const verts = D10_SHAPE.vertices.map(v => v.clone().multiplyScalar(radius));
+    const position = [];
+    const normal = [];
+    const uv = [];
+    const geometry = new THREE.BufferGeometry();
+
+    D10_SHAPE.faces.forEach((face, faceIndex) => {
+        const p = face.map(i => verts[i]);
+        const n = faceNormal(p);
+
+        const centroid = new THREE.Vector3();
+        p.forEach(v => centroid.add(v));
+        centroid.divideScalar(p.length);
+
+        // Flatten the kite into its own plane so the number lands centred on it
+        const vAxis = new THREE.Vector3().subVectors(p[0], centroid).normalize();
+        const uAxis = new THREE.Vector3().crossVectors(n, vAxis).normalize();
+        const flat = p.map(v => {
+            const d = new THREE.Vector3().subVectors(v, centroid);
+            return [d.dot(uAxis), d.dot(vAxis)];
+        });
+        const extent = Math.max(...flat.map(([x, y]) => Math.max(Math.abs(x), Math.abs(y)))) * 1.05;
+        const uvs = flat.map(([x, y]) => [0.5 + x / (2 * extent), 0.5 + y / (2 * extent)]);
+
+        // Fan-triangulate the kite from its apex: two triangles, six vertices
+        for (let t = 1; t < p.length - 1; t++) {
+            [0, t, t + 1].forEach(k => {
+                position.push(p[k].x, p[k].y, p[k].z);
+                normal.push(n.x, n.y, n.z);
+                uv.push(uvs[k][0], uvs[k][1]);
+            });
+        }
+
+        geometry.addGroup(faceIndex * 6, 6, faceIndex);
+    });
+
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return geometry;
+}
+
+function createD10CollisionShape(radius) {
+    return new CANNON.ConvexPolyhedron({
+        vertices: D10_SHAPE.vertices.map(v =>
+            new CANNON.Vec3(v.x * radius, v.y * radius, v.z * radius)
+        ),
+        faces: D10_SHAPE.faces.map(f => f.slice())
+    });
+}
+
+// ============================================
+// FACE TABLES
+// ============================================
+//
+// Each die carries the list of its faces: the outward normal in local space,
+// the value printed there, and how far the face sits from the die's centre
+// (used to drop a stuck die flat onto the floor).
+
+const UP = new THREE.Vector3(0, 1, 0);
+
+const FACE_DIRS = [
+    { dir: new THREE.Vector3(1, 0, 0),  value: 2 },
+    { dir: new THREE.Vector3(-1, 0, 0), value: 5 },
+    { dir: new THREE.Vector3(0, 1, 0),  value: 3 },
+    { dir: new THREE.Vector3(0, -1, 0), value: 4 },
+    { dir: new THREE.Vector3(0, 0, 1),  value: 1 },
+    { dir: new THREE.Vector3(0, 0, -1), value: 6 }
+];
+
+function d6Faces(size) {
+    return FACE_DIRS.map(f => ({ dir: f.dir.clone(), value: f.value, dist: size / 2 }));
+}
+
+function d10Faces(radius) {
+    return D10_SHAPE.faces.map((face, i) => {
+        const p = face.map(idx => D10_SHAPE.vertices[idx].clone().multiplyScalar(radius));
+        const dir = faceNormal(p);
+        return { dir, value: i + 1, dist: Math.abs(dir.dot(p[0])) };
+    });
+}
+
+// ============================================
 // CREATE / CLEAR
 // ============================================
 
-function createDie(sides = 6) {
-    const radius = DICE_SIZE * 0.08;
-    const geometry = new RoundedBoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 2, radius);
+function createDie(sides) {
+    let mesh;
+    let shape;
+    let faces;
 
-    const mesh = new THREE.Mesh(geometry, sides === 6 ? createDiceMaterials() : createD10Materials());
+    if (sides === 10) {
+        const radius = DICE_SIZE * D10_RADIUS_RATIO;
+        mesh = new THREE.Mesh(createD10Geometry(radius), createD10Materials());
+        shape = createD10CollisionShape(radius);
+        faces = d10Faces(radius);
+    } else {
+        const radius = DICE_SIZE * 0.08;
+        const geometry = new RoundedBoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 2, radius);
+        mesh = new THREE.Mesh(geometry, createDiceMaterials());
+        shape = new CANNON.Box(new CANNON.Vec3(DICE_SIZE / 2, DICE_SIZE / 2, DICE_SIZE / 2));
+        faces = d6Faces(DICE_SIZE);
+    }
+
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
 
     const body = new CANNON.Body({
         mass: 1,
-        shape: new CANNON.Box(new CANNON.Vec3(DICE_SIZE / 2, DICE_SIZE / 2, DICE_SIZE / 2)),
+        shape,
         material: physicsMaterials.dice,
         angularDamping: 0.3,
         linearDamping: 0.1
     });
     world.addBody(body);
 
-    const die = { mesh, body, size: DICE_SIZE, nudgeAttempts: 0 };
+    const die = { mesh, body, faces, nudgeAttempts: 0 };
     dice.push(die);
     return die;
 }
@@ -202,11 +354,11 @@ function rollDice(count, sides = 6) {
         die.body.wakeUp();
     }
 
-    return waitForStop(sides);
+    return waitForStop();
 }
 
 /** Returns a Promise that resolves with the results array once dice stop */
-function waitForStop(sides = 6) {
+function waitForStop() {
     return new Promise(resolve => {
         const checkInterval = setInterval(() => {
             const allStopped = dice.every(die =>
@@ -242,9 +394,7 @@ function waitForStop(sides = 6) {
 
             clearInterval(checkInterval);
             setTimeout(() => {
-                const results = sides === 6
-                    ? readResults()
-                    : Array.from({ length: dice.length }, () => Math.floor(Math.random() * sides) + 1);
+                const results = readResults();
                 isRolling = false;
                 resolve(results);
             }, 300);
@@ -254,9 +404,7 @@ function waitForStop(sides = 6) {
         setTimeout(() => {
             if (isRolling) {
                 clearInterval(checkInterval);
-                const results = sides === 6
-                    ? readResults()
-                    : Array.from({ length: dice.length }, () => Math.floor(Math.random() * sides) + 1);
+                const results = readResults();
                 isRolling = false;
                 resolve(results);
             }
@@ -268,17 +416,6 @@ function waitForStop(sides = 6) {
 // READING RESULTS
 // ============================================
 
-const FACE_DIRS = [
-    { dir: new THREE.Vector3(1, 0, 0),  value: 2 },
-    { dir: new THREE.Vector3(-1, 0, 0), value: 5 },
-    { dir: new THREE.Vector3(0, 1, 0),  value: 3 },
-    { dir: new THREE.Vector3(0, -1, 0), value: 4 },
-    { dir: new THREE.Vector3(0, 0, 1),  value: 1 },
-    { dir: new THREE.Vector3(0, 0, -1), value: 6 }
-];
-
-const UP = new THREE.Vector3(0, 1, 0);
-
 // How aligned a face normal must be with "up" to count as resting flat
 // (1 = perfectly flat, ~0.7 = balanced on an edge, ~0.58 = on a corner)
 const SETTLE_DOT_THRESHOLD = 0.97;
@@ -286,7 +423,7 @@ const SETTLE_DOT_THRESHOLD = 0.97;
 // Number of physics nudges to try before forcing the die flat
 const MAX_NUDGE_ATTEMPTS = 3;
 
-/** Returns the face value most aligned with "up" and how flat it's resting (1 = flat) */
+/** Returns the face pointing most nearly up, and how flat it's resting (1 = flat) */
 function getRestingFace(die) {
     const q = new THREE.Quaternion(
         die.body.quaternion.x,
@@ -296,22 +433,21 @@ function getRestingFace(die) {
     );
 
     let maxDot = -Infinity;
-    let value = 1;
+    let best = die.faces[0];
 
-    FACE_DIRS.forEach(face => {
+    die.faces.forEach(face => {
         const dot = face.dir.clone().applyQuaternion(q).dot(UP);
         if (dot > maxDot) {
             maxDot = dot;
-            value = face.value;
+            best = face;
         }
     });
 
-    return { value, dot: maxDot };
+    return { face: best, value: best.value, dot: maxDot };
 }
 
 /** Rotates a stuck die so its resting face points straight up, and rests it on the floor */
 function flattenDie(die, resting) {
-    const face = FACE_DIRS.find(f => f.value === resting.value);
     const q = new THREE.Quaternion(
         die.body.quaternion.x,
         die.body.quaternion.y,
@@ -319,12 +455,12 @@ function flattenDie(die, resting) {
         die.body.quaternion.w
     );
 
-    const currentUp = face.dir.clone().applyQuaternion(q).normalize();
+    const currentUp = resting.face.dir.clone().applyQuaternion(q).normalize();
     const correction = new THREE.Quaternion().setFromUnitVectors(currentUp, UP);
     const flattened = correction.multiply(q);
 
     die.body.quaternion.set(flattened.x, flattened.y, flattened.z, flattened.w);
-    die.body.position.y = die.size / 2;
+    die.body.position.y = resting.face.dist;
     die.body.velocity.setZero();
     die.body.angularVelocity.setZero();
 }

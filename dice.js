@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { scene, world, physicsMaterials } from './engine.js';
-import { DIE_TYPES, ICON_PATH } from './wargame.js';
 
 let DICE_SIZE = 2.4;
 
@@ -10,24 +9,14 @@ function setDiceSize(size) {
     DICE_SIZE = size;
 }
 
-// Face order for BoxGeometry materials: +X, -X, +Y, -Y, +Z, -Z
-const FACE_DIRS = [
-    new THREE.Vector3(1, 0, 0),
-    new THREE.Vector3(-1, 0, 0),
-    new THREE.Vector3(0, 1, 0),
-    new THREE.Vector3(0, -1, 0),
-    new THREE.Vector3(0, 0, 1),
-    new THREE.Vector3(0, 0, -1)
-];
-
-// Pip values for a standard d6, in the same face order as FACE_DIRS
+// Face order for BoxGeometry: +X, -X, +Y, -Y, +Z, -Z
 const FACE_VALUES = [2, 5, 3, 4, 1, 6];
 
 // All live dice on the board
 const dice = [];
 
 // ============================================
-// TEXTURES — PIP DICE (d6)
+// TEXTURES
 // ============================================
 
 function createFaceTexture(value) {
@@ -67,6 +56,10 @@ function createFaceTexture(value) {
     return texture;
 }
 
+// ============================================
+// MATERIALS
+// ============================================
+
 function createDiceMaterials() {
     return FACE_VALUES.map(val => new THREE.MeshStandardMaterial({
         map: createFaceTexture(val),
@@ -76,39 +69,14 @@ function createDiceMaterials() {
 }
 
 // ============================================
-// TEXTURES — WARGAME DICE
-// ============================================
-
-const textureLoader = new THREE.TextureLoader();
-const iconTextureCache = new Map();
-
-function getIconTexture(icon) {
-    let texture = iconTextureCache.get(icon);
-    if (!texture) {
-        texture = textureLoader.load(ICON_PATH + icon);
-        iconTextureCache.set(icon, texture);
-    }
-    return texture;
-}
-
-function createWargameMaterials(type) {
-    return DIE_TYPES[type].faces.map(face => new THREE.MeshStandardMaterial({
-        map: getIconTexture(face.icon),
-        roughness: 0.3,
-        metalness: 0.1
-    }));
-}
-
-// ============================================
 // CREATE / CLEAR
 // ============================================
 
-function createDie(type = 'd6') {
+function createDie() {
     const radius = DICE_SIZE * 0.08;
     const geometry = new RoundedBoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 2, radius);
 
-    const materials = type === 'd6' ? createDiceMaterials() : createWargameMaterials(type);
-    const mesh = new THREE.Mesh(geometry, materials);
+    const mesh = new THREE.Mesh(geometry, createDiceMaterials());
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
@@ -122,7 +90,7 @@ function createDie(type = 'd6') {
     });
     world.addBody(body);
 
-    const die = { mesh, body, size: DICE_SIZE, type, nudgeAttempts: 0 };
+    const die = { mesh, body, size: DICE_SIZE, nudgeAttempts: 0 };
     dice.push(die);
     return die;
 }
@@ -134,8 +102,7 @@ function clearDice() {
         die.mesh.geometry.dispose();
         if (Array.isArray(die.mesh.material)) {
             die.mesh.material.forEach(m => {
-                // Wargame icon textures are cached and shared across rolls
-                if (die.type === 'd6' && m.map) m.map.dispose();
+                if (m.map) m.map.dispose();
                 m.dispose();
             });
         }
@@ -149,21 +116,14 @@ function clearDice() {
 
 let isRolling = false;
 
-/**
- * Rolls a set of dice. `spec` is either a number (rolls that many
- * standard d6) or an array of die type strings, e.g.
- * ['d6', 'd6'] or ['infantry', 'infantry', 'ship'].
- */
-function rollDice(spec) {
+function rollDice(count) {
     if (isRolling) return Promise.resolve([]);
     isRolling = true;
 
     clearDice();
 
-    const types = Array.isArray(spec) ? spec : Array(spec).fill('d6');
-
-    types.forEach(type => {
-        const die = createDie(type);
+    for (let i = 0; i < count; i++) {
+        const die = createDie();
 
         // Random spawn within a small central area
         const angle = Math.random() * Math.PI * 2;
@@ -205,7 +165,7 @@ function rollDice(spec) {
         );
 
         die.body.wakeUp();
-    });
+    }
 
     return waitForStop();
 }
@@ -269,6 +229,15 @@ function waitForStop() {
 // READING RESULTS
 // ============================================
 
+const FACE_DIRS = [
+    { dir: new THREE.Vector3(1, 0, 0),  value: 2 },
+    { dir: new THREE.Vector3(-1, 0, 0), value: 5 },
+    { dir: new THREE.Vector3(0, 1, 0),  value: 3 },
+    { dir: new THREE.Vector3(0, -1, 0), value: 4 },
+    { dir: new THREE.Vector3(0, 0, 1),  value: 1 },
+    { dir: new THREE.Vector3(0, 0, -1), value: 6 }
+];
+
 const UP = new THREE.Vector3(0, 1, 0);
 
 // How aligned a face normal must be with "up" to count as resting flat
@@ -278,7 +247,7 @@ const SETTLE_DOT_THRESHOLD = 0.97;
 // Number of physics nudges to try before forcing the die flat
 const MAX_NUDGE_ATTEMPTS = 3;
 
-/** Returns the face index most aligned with "up" and how flat it's resting (1 = flat) */
+/** Returns the face value most aligned with "up" and how flat it's resting (1 = flat) */
 function getRestingFace(die) {
     const q = new THREE.Quaternion(
         die.body.quaternion.x,
@@ -288,22 +257,22 @@ function getRestingFace(die) {
     );
 
     let maxDot = -Infinity;
-    let faceIndex = 0;
+    let value = 1;
 
-    FACE_DIRS.forEach((dir, i) => {
-        const dot = dir.clone().applyQuaternion(q).dot(UP);
+    FACE_DIRS.forEach(face => {
+        const dot = face.dir.clone().applyQuaternion(q).dot(UP);
         if (dot > maxDot) {
             maxDot = dot;
-            faceIndex = i;
+            value = face.value;
         }
     });
 
-    return { faceIndex, dot: maxDot };
+    return { value, dot: maxDot };
 }
 
 /** Rotates a stuck die so its resting face points straight up, and rests it on the floor */
 function flattenDie(die, resting) {
-    const dir = FACE_DIRS[resting.faceIndex];
+    const face = FACE_DIRS.find(f => f.value === resting.value);
     const q = new THREE.Quaternion(
         die.body.quaternion.x,
         die.body.quaternion.y,
@@ -311,7 +280,7 @@ function flattenDie(die, resting) {
         die.body.quaternion.w
     );
 
-    const currentUp = dir.clone().applyQuaternion(q).normalize();
+    const currentUp = face.dir.clone().applyQuaternion(q).normalize();
     const correction = new THREE.Quaternion().setFromUnitVectors(currentUp, UP);
     const flattened = correction.multiply(q);
 
@@ -321,17 +290,8 @@ function flattenDie(die, resting) {
     die.body.angularVelocity.setZero();
 }
 
-/** Builds the result for a single die: a pip number for 'd6', or a face descriptor for wargame dice */
-function buildResult(die) {
-    const { faceIndex } = getRestingFace(die);
-    if (die.type === 'd6') return FACE_VALUES[faceIndex];
-
-    const face = DIE_TYPES[die.type].faces[faceIndex];
-    return { type: die.type, icon: face.icon, label: face.label, categories: face.categories };
-}
-
 function readResults() {
-    return dice.map(buildResult);
+    return dice.map(die => getRestingFace(die).value);
 }
 
 // ============================================

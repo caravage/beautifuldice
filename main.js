@@ -110,12 +110,12 @@ async function executeRoll() {
 
     rollBtn.disabled = true;
 
-    if (sides === 6) {
+    if (sides === 6 || sides === 10) {
         showRolling();
-        const results = await rollDice(count);
+        const results = await rollDice(count, sides);
         showResults(results, condition);
     } else {
-        // Virtual roll for non-d6 dice — no 3D animation
+        // Virtual roll for other dice — no 3D animation
         clearDice();
         const results = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
         showResults(results, condition);

@@ -12,6 +12,9 @@ function setDiceSize(size) {
 // Face order for BoxGeometry: +X, -X, +Y, -Y, +Z, -Z
 const FACE_VALUES = [2, 5, 3, 4, 1, 6];
 
+// D10 face labels (decorative — actual result is random 1–10 after animation)
+const D10_FACE_LABELS = [0, 1, 2, 3, 4, 5];
+
 // All live dice on the board
 const dice = [];
 
@@ -68,15 +71,47 @@ function createDiceMaterials() {
     }));
 }
 
+function createNumberTexture(label) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 256);
+
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, 248, 248);
+
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 130px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(label), 128, 132);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
+function createD10Materials() {
+    return D10_FACE_LABELS.map(label => new THREE.MeshStandardMaterial({
+        map: createNumberTexture(label),
+        roughness: 0.3,
+        metalness: 0.1
+    }));
+}
+
 // ============================================
 // CREATE / CLEAR
 // ============================================
 
-function createDie() {
+function createDie(sides = 6) {
     const radius = DICE_SIZE * 0.08;
     const geometry = new RoundedBoxGeometry(DICE_SIZE, DICE_SIZE, DICE_SIZE, 2, radius);
 
-    const mesh = new THREE.Mesh(geometry, createDiceMaterials());
+    const mesh = new THREE.Mesh(geometry, sides === 6 ? createDiceMaterials() : createD10Materials());
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
@@ -116,14 +151,14 @@ function clearDice() {
 
 let isRolling = false;
 
-function rollDice(count) {
+function rollDice(count, sides = 6) {
     if (isRolling) return Promise.resolve([]);
     isRolling = true;
 
     clearDice();
 
     for (let i = 0; i < count; i++) {
-        const die = createDie();
+        const die = createDie(sides);
 
         // Random spawn within a small central area
         const angle = Math.random() * Math.PI * 2;
@@ -167,11 +202,11 @@ function rollDice(count) {
         die.body.wakeUp();
     }
 
-    return waitForStop();
+    return waitForStop(sides);
 }
 
 /** Returns a Promise that resolves with the results array once dice stop */
-function waitForStop() {
+function waitForStop(sides = 6) {
     return new Promise(resolve => {
         const checkInterval = setInterval(() => {
             const allStopped = dice.every(die =>
@@ -207,7 +242,9 @@ function waitForStop() {
 
             clearInterval(checkInterval);
             setTimeout(() => {
-                const results = readResults();
+                const results = sides === 6
+                    ? readResults()
+                    : Array.from({ length: dice.length }, () => Math.floor(Math.random() * sides) + 1);
                 isRolling = false;
                 resolve(results);
             }, 300);
@@ -217,7 +254,9 @@ function waitForStop() {
         setTimeout(() => {
             if (isRolling) {
                 clearInterval(checkInterval);
-                const results = readResults();
+                const results = sides === 6
+                    ? readResults()
+                    : Array.from({ length: dice.length }, () => Math.floor(Math.random() * sides) + 1);
                 isRolling = false;
                 resolve(results);
             }
